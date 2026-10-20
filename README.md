@@ -8,9 +8,13 @@ new IP.
 It's a tiny HTTP service, meant to be called a few times a year:
 
 ```sh
-wget -qO- --post-data='token=XXXX' http://<host>:8780/reset
-wget -qO- http://<host>:8780/status
+curl -sS --fail-with-body --data 'token=XXXX' http://<host>:8780/reset
+curl -sS http://<host>:8780/status
 ```
+
+`--data` sends a form-encoded POST. `--fail-with-body` (curl 7.76+) prints the
+JSON error body and exits non-zero (22) on `4xx` / `5xx`, so scripts can check
+the exit code. Add `-w ' [%{http_code}]\n'` to also print the status code.
 
 ## How a reset works
 
