@@ -197,17 +197,20 @@ class ResetManager:
         site = self.notifier.site
         if run['state'] == 'succeeded':
             changed = 'yes' if run['wan_ip_changed'] else 'no'
-            self._notify(f'WAN IP refresh succeeded for {site}',
-                         f'New MAC {run["new_mac"]}, WAN IP changed: {changed} '
-                         f'({elapsed}s)', 'white_check_mark', NOTIFY_RETRY_SECONDS)
+            self._notify('WAN IP refresh succeeded',
+                         f'{site}: new MAC {run["new_mac"]}, WAN IP changed: '
+                         f'{changed} ({elapsed}s)', 'white_check_mark',
+                         NOTIFY_RETRY_SECONDS)
         else:
-            self._notify(f'WAN IP refresh FAILED for {site}',
-                         f'{run["error"]} ({elapsed}s)', 'x', NOTIFY_RETRY_SECONDS)
+            self._notify('WAN IP refresh FAILED',
+                         f'{site}: {run["error"]} ({elapsed}s)', 'x',
+                         NOTIFY_RETRY_SECONDS)
 
     def _execute(self, pre: dict[str, Any]) -> None:
         rcfg = self.cfg.reset
-        self._notify(f'Initiated WAN IP refresh for {self.notifier.site}',
-                     f'Old MAC {pre["old_mac"]}; internet drops for ~2-3 min',
+        self._notify('WAN IP refresh started',
+                     f'Initiated WAN IP refresh for {self.notifier.site}. Internet '
+                     f'drops for ~2-3 min (old MAC {pre["old_mac"]})',
                      'arrows_counterclockwise', 0)
         try:
             new = random_mac(rcfg.mac_prefix, pre['old_mac'])

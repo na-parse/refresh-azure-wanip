@@ -36,8 +36,9 @@ Both print the JSON reply, including error bodies, and exit non-zero on
 | 5 | `wan_up` | Gateway WAN is up with a public IP (ignores the modem's temporary `192.168.100.x` address) |
 
 If `[notify]` is set, an ntfy.sh notification goes out just before step 2
-("Initiated WAN IP refresh for azure.unit03") and another when the run ends
-(succeeded or failed). The final one retries for up to 2 minutes in case the
+("WAN IP refresh started") and another when the run ends ("WAN IP refresh
+succeeded" / "FAILED"). Titles are kept short because iOS cuts them off at
+around 40 characters; the site name and details go in the message body. The final one retries for up to 2 minutes in case the
 internet isn't back yet. A failed preflight (`503`) sends nothing, since no
 reset starts. Notification failures are logged and never stop a reset.
 

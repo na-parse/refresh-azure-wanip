@@ -34,4 +34,4 @@ recovery_timeout_seconds = 300 # plug back on -> WAN has a public IP
 
 [notify]                       # optional section; omit to disable notifications
 ntfy_topic = ""                # ntfy.sh topic; anyone who knows it can read/post
-site = "azure.unit03"          # name used in notification titles
+site = "azure.unit03"          # name used in notification messages

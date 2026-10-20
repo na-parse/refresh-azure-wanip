@@ -8,6 +8,7 @@ from .config import NotifyConfig
 # =============================================================================
 NTFY_SERVER = 'https://ntfy.sh'
 TIMEOUT = 10
+# Titles longer than ~40 chars are cut off on iOS; keep them short, detail in body
 
 
 # =============================================================================
