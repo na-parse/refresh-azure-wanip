@@ -82,7 +82,9 @@ Status body:
 
 Copy `config.example.toml` to `config.toml` and run `chmod 600 config.toml`.
 The service looks for its config in this order: `--config PATH`, then
-`./config.toml`, then `/etc/refresh-azure-wanip/config.toml`.
+`./config.toml`, then `/etc/refresh-azure-wanip/config.toml`. The systemd
+service passes `--config /opt/refresh-azure-wanip/config.toml` (see
+[Installing as a systemd service](#installing-as-a-systemd-service)).
 
 | Section | Keys |
 |---|---|
@@ -154,21 +156,132 @@ Notes:
 - Don't press Ctrl-C mid-reset: the old MAC won't be restored. The plug still
   turns back on by itself and the new MAC works, but the run isn't confirmed.
 
-### systemd (service host)
+## Installing as a systemd service
+
+These steps install the service on a Linux host (written against Debian 13) so
+it starts at boot and restarts if it crashes. Everything lives in one folder:
+
+| Path | What it is |
+|---|---|
+| `/opt/refresh-azure-wanip/` | The code, a git checkout |
+| `/opt/refresh-azure-wanip/.venv/` | Python environment with the service and `requests` |
+| `/opt/refresh-azure-wanip/config.toml` | Your settings and passwords. Gitignored, so `git pull` never touches it |
+| `/etc/systemd/system/refresh-azure-wanip.service` | Tells systemd how to run it |
+
+The service runs as its own user, `refresh-wanip`, which can read the code and
+config but can't change anything.
+
+### Before you start
+
+- **Run every step as root.** Use `ssh root@<host>` or `sudo -i`. Don't put
+  `sudo` in front of each command: `uv` is usually installed in your home
+  folder (`~/.local/bin`), and `sudo` uses a fixed PATH that doesn't include
+  it, so `sudo uv ...` fails with `command not found`.
+- **Install `uv` for root** if `uv --version` doesn't work in the root shell.
+  See [uv's install docs](https://docs.astral.sh/uv/getting-started/installation/).
+- **Network access.** The host must reach the gateway (TCP 443), the modem at
+  `192.168.100.1` (TCP 443, routed through the gateway) and the plug (TCP 80).
+
+### 1. Create the service user
 
 ```sh
-sudo useradd --system --no-create-home refresh-wanip
-sudo git clone <repo> /opt/refresh-azure-wanip
-cd /opt/refresh-azure-wanip && sudo uv venv && sudo uv pip install .
-sudo install -d -m 750 -o root -g refresh-wanip /etc/refresh-azure-wanip
-sudo install -m 640 -o root -g refresh-wanip config.toml /etc/refresh-azure-wanip/
-sudo cp deploy/refresh-azure-wanip.service /etc/systemd/system/
-sudo systemctl daemon-reload && sudo systemctl enable --now refresh-azure-wanip
-journalctl -u refresh-azure-wanip -f
+useradd --system --no-create-home --shell /usr/sbin/nologin refresh-wanip
 ```
 
-The host needs to reach: the gateway (TCP 443), the modem at `192.168.100.1`
-(TCP 443, routed through the gateway) and the plug (TCP 80).
+A system account with no home folder and no login shell, so it can only be
+used to run the service.
+
+### 2. Get the code and install it
+
+```sh
+git clone https://github.com/na-parse/refresh-azure-wanip.git /opt/refresh-azure-wanip
+cd /opt/refresh-azure-wanip
+uv venv --no-managed-python
+uv pip install .
+```
+
+`--no-managed-python` makes the environment use the system Python (e.g.
+`/usr/bin/python3`). Without it, uv may download its own Python into
+`/root/.local/share/uv/`, which the service user can't read, and the service
+fails to start. Python 3.11+ is required (Debian 13 has 3.13).
+
+### 3. Create the config
+
+```sh
+cp config.example.toml config.toml
+nano config.toml
+chown root:refresh-wanip config.toml
+chmod 640 config.toml
+```
+
+Fill in every section (see [Configuration](#configuration) and
+[Finding the UniFi values](#finding-the-unifi-values)). The owner and mode
+let root edit the file and let the service user read it; nobody else can see
+the passwords and API key in it.
+
+### 4. Test the config as the service user
+
+```sh
+runuser -u refresh-wanip -- .venv/bin/refresh-azure-wanip --check \
+    --config /opt/refresh-azure-wanip/config.toml
+```
+
+This runs the read-only preflight exactly as the service will. It confirms
+that the service user can read the config and reach the gateway, modem and
+plug. Fix anything it reports before going on.
+
+### 5. Install and start the service
+
+```sh
+cp deploy/refresh-azure-wanip.service /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now refresh-azure-wanip
+```
+
+`daemon-reload` makes systemd read the new unit file. `enable --now` starts
+the service and sets it to start at boot.
+
+### 6. Check it's running
+
+```sh
+systemctl status refresh-azure-wanip
+curl -sS http://localhost:8780/status
+```
+
+`status` should show `active (running)`, and `curl` should print the status
+JSON with `"state": "idle"`.
+
+### Day-to-day
+
+| Task | Command (as root) |
+|---|---|
+| Watch the log | `journalctl -u refresh-azure-wanip -f` |
+| Restart after editing `config.toml` | `systemctl restart refresh-azure-wanip` |
+| Stop / start | `systemctl stop refresh-azure-wanip` / `systemctl start refresh-azure-wanip` |
+
+To update to the latest code:
+
+```sh
+cd /opt/refresh-azure-wanip
+git pull
+uv pip install --reinstall-package refresh-azure-wanip .
+systemctl restart refresh-azure-wanip
+```
+
+`--reinstall-package` is needed because the version number usually doesn't
+change between commits, and uv would otherwise treat the old copy as
+current. If `git pull` changed `deploy/refresh-azure-wanip.service`, copy it
+again and run `systemctl daemon-reload` before restarting.
+
+To remove it completely:
+
+```sh
+systemctl disable --now refresh-azure-wanip
+rm /etc/systemd/system/refresh-azure-wanip.service
+systemctl daemon-reload
+rm -r /opt/refresh-azure-wanip
+userdel refresh-wanip
+```
 
 ## Hardware notes
 
