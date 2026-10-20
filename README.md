@@ -84,7 +84,7 @@ The service looks for its config in this order: `--config PATH`, then
 | Section | Keys |
 |---|---|
 | `[server]` | `host`, `port` (8780), `token`, `cooldown_seconds` (600) |
-| `[unifi]` | `address` (gateway IP), `api_key`, `site`, `wan_network`, `verify_tls` |
+| `[unifi]` | `address` (gateway hostname or IP), `api_key`, `site`, `wan_network`, `verify_tls` |
 | `[modem]` | `address` (192.168.100.1), `username`, `password` |
 | `[plug]` | `address`, `password` (user is always `admin`), `switch_id` |
 | `[reset]` | `off_seconds` (15), `mac_prefix`, `mac_apply_timeout_seconds`, `recovery_timeout_seconds` |
@@ -93,6 +93,15 @@ The service looks for its config in this order: `--config PATH`, then
 `mac_prefix` must be a locally administered unicast prefix: the first octet's
 second hex digit must be `2`, `6`, `a` or `e`. The IEEE never assigns these
 addresses to hardware, so they can't clash with a real device.
+
+For the gateway, use its hostname with `verify_tls = true` when it has a valid
+certificate (e.g. Let's Encrypt), so the API key is only sent to the real
+gateway. The name **must resolve through DNS on the LAN**: the internet drops
+partway through a reset and the service keeps calling the gateway the whole
+time. If no local DNS server holds the record, add it to the service host's
+`/etc/hosts`. With an IP address or a self-signed certificate, set
+`verify_tls = false`. An expired certificate fails the preflight (`503`), so
+no reset starts.
 
 `ntfy_topic` is a topic on the public https://ntfy.sh server. Anyone who
 knows the name can read and post to it, so treat it like a password and keep

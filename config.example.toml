@@ -10,11 +10,11 @@ token = "change-me"            # required in POST /reset data: token=<value>
 cooldown_seconds = 600         # minimum time between resets
 
 [unifi]
-address = "172.16.1.1"         # gateway IP (avoid DNS)
+address = "gw.azure.unit03.net" # must resolve via LAN DNS (internet drops mid-reset)
 api_key = ""                   # Network API key (X-API-KEY), needs write access
 site = "default"
 wan_network = "WAN-Comcast"    # networkconf name of the WAN to rotate
-verify_tls = false
+verify_tls = true              # false only when address is an IP / self-signed cert
 
 [modem]
 address = "192.168.100.1"
