@@ -31,3 +31,7 @@ off_seconds = 15               # modem power-off time
 mac_prefix = "f2:96:1a"        # must be locally administered unicast
 mac_apply_timeout_seconds = 90 # wait for gateway to apply the new MAC
 recovery_timeout_seconds = 300 # plug back on -> WAN has a public IP
+
+[notify]                       # optional section; omit to disable notifications
+ntfy_topic = ""                # ntfy.sh topic; anyone who knows it can read/post
+site = "azure.unit03"          # name used in notification titles

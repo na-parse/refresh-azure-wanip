@@ -7,6 +7,7 @@ Sequence (the internet drops at step 2 and returns after step 5):
   4. modem_reboot  modem up time lower than before
   5. wan_up        gateway wan1 up with a public IP on the new MAC
 If step 2 or 3 fails, the old MAC is restored (all calls are LAN-only).
+Optional ntfy.sh notifications go out before step 2 and when the run ends.
 '''
 import logging
 import threading
@@ -16,6 +17,7 @@ from typing import Any, Callable
 
 from .config import Config
 from .modem import ModemClient
+from .notify import Notifier
 from .plug import PlugClient
 from .unifi import UnifiClient, random_mac
 
@@ -25,6 +27,7 @@ log = logging.getLogger(__name__)
 # Constants
 # =============================================================================
 MODEM_BOOTSTRAP_NET = '192.168.100.'  # modem DHCP before it reaches the ISP
+NOTIFY_RETRY_SECONDS = 120  # final notice may wait for the internet to return
 POLL_SECONDS = 3
 PREFLIGHT_TRIES = 4
 
@@ -76,6 +79,7 @@ class ResetManager:
         self.unifi = UnifiClient(cfg.unifi)
         self.modem = ModemClient(cfg.modem)
         self.plug = PlugClient(cfg.plug)
+        self.notifier = Notifier(cfg.notify)
         self._lock = threading.Lock()
         self._running = False
         self._last_start: float | None = None
@@ -172,8 +176,39 @@ class ResetManager:
         except Exception as exc:
             self._event(f'REVERT FAILED: {exc}')
 
+    def _notify(self, title: str, message: str, tags: str, retry: float) -> None:
+        '''Send a notification if enabled; failures are logged, never raised.'''
+        if not self.notifier.enabled:
+            return
+        if retry:
+            sent = _wait(lambda: self.notifier.send(title, message, tags), retry)
+        else:
+            try:
+                sent = self.notifier.send(title, message, tags)
+            except Exception:
+                sent = False
+        if not sent:
+            log.warning('notification not sent: %s', title)
+
+    def _notify_result(self) -> None:
+        with self._lock:
+            run = dict(self._run)
+        elapsed = round(time.monotonic() - self._t0)
+        site = self.notifier.site
+        if run['state'] == 'succeeded':
+            changed = 'yes' if run['wan_ip_changed'] else 'no'
+            self._notify(f'WAN IP refresh succeeded for {site}',
+                         f'New MAC {run["new_mac"]}, WAN IP changed: {changed} '
+                         f'({elapsed}s)', 'white_check_mark', NOTIFY_RETRY_SECONDS)
+        else:
+            self._notify(f'WAN IP refresh FAILED for {site}',
+                         f'{run["error"]} ({elapsed}s)', 'x', NOTIFY_RETRY_SECONDS)
+
     def _execute(self, pre: dict[str, Any]) -> None:
         rcfg = self.cfg.reset
+        self._notify(f'Initiated WAN IP refresh for {self.notifier.site}',
+                     f'Old MAC {pre["old_mac"]}; internet drops for ~2-3 min',
+                     'arrows_counterclockwise', 0)
         try:
             new = random_mac(rcfg.mac_prefix, pre['old_mac'])
             self.unifi.set_mac(pre['conf'], new)
@@ -210,6 +245,7 @@ class ResetManager:
             log.error('reset failed: %s', exc)
             self._event(f'FAILED: {exc}', state='failed', error=str(exc))
         finally:
+            self._notify_result()
             with self._lock:
                 self._run['finished'] = _now()
                 self._running = False

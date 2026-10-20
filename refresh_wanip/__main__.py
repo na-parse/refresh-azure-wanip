@@ -37,7 +37,7 @@ def main() -> None:
         if code != 202:
             print(json.dumps(body, indent=2))
             sys.exit(1)
-        while manager.status()['state'] == 'running':
+        while manager.status()['finished'] is None:
             time.sleep(POLL_SECONDS)
         final = manager.status()
         print(json.dumps(final, indent=2))

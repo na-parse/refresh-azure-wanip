@@ -35,6 +35,12 @@ Both print the JSON reply, including error bodies, and exit non-zero on
 | 4 | `modem_reboot` | Confirms the modem's up time reset |
 | 5 | `wan_up` | Gateway WAN is up with a public IP (ignores the modem's temporary `192.168.100.x` address) |
 
+If `[notify]` is set, an ntfy.sh notification goes out just before step 2
+("Initiated WAN IP refresh for azure.unit03") and another when the run ends
+(succeeded or failed). The final one retries for up to 2 minutes in case the
+internet isn't back yet. A failed preflight (`503`) sends nothing, since no
+reset starts. Notification failures are logged and never stop a reset.
+
 If step 2 or 3 fails, the old MAC is put back. Every call goes to a LAN
 address (gateway, modem `192.168.100.1`, plug), so losing the internet
 partway through doesn't affect the service.
@@ -81,10 +87,15 @@ The service looks for its config in this order: `--config PATH`, then
 | `[modem]` | `address` (192.168.100.1), `username`, `password` |
 | `[plug]` | `address`, `password` (user is always `admin`), `switch_id` |
 | `[reset]` | `off_seconds` (15), `mac_prefix`, `mac_apply_timeout_seconds`, `recovery_timeout_seconds` |
+| `[notify]` | Optional. `ntfy_topic` (empty = off), `site` (`azure.unit03`, used in titles) |
 
 `mac_prefix` must be a locally administered unicast prefix: the first octet's
 second hex digit must be `2`, `6`, `a` or `e`. The IEEE never assigns these
 addresses to hardware, so they can't clash with a real device.
+
+`ntfy_topic` is a topic on the public https://ntfy.sh server. Anyone who
+knows the name can read and post to it, so treat it like a password and keep
+it out of the repo.
 
 ## Running
 

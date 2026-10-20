@@ -61,6 +61,13 @@ class ResetConfig:
 
 
 @dataclass(frozen=True)
+class NotifyConfig:
+    '''ntfy.sh notifications; disabled when ntfy_topic is empty.'''
+    ntfy_topic: str = ''
+    site: str = 'azure.unit03'
+
+
+@dataclass(frozen=True)
 class Config:
     '''Complete service configuration.'''
     server: ServerConfig
@@ -68,6 +75,7 @@ class Config:
     modem: ModemConfig
     plug: PlugConfig
     reset: ResetConfig
+    notify: NotifyConfig
 
 
 # =============================================================================
@@ -122,6 +130,7 @@ def load_config(path: Path) -> Config:
         modem=_section(ModemConfig, data.get('modem', {}), 'modem'),
         plug=_section(PlugConfig, data.get('plug', {}), 'plug'),
         reset=_section(ResetConfig, data.get('reset', {}), 'reset'),
+        notify=_section(NotifyConfig, data.get('notify', {}), 'notify'),
     )
     validate_mac_prefix(config.reset.mac_prefix)
     if not config.server.token or config.server.token == 'change-me':
