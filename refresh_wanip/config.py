@@ -30,8 +30,8 @@ class UnifiConfig:
     '''UniFi Network API (gateway) settings.'''
     address: str
     api_key: str
+    wan_network: str
     site: str = 'default'
-    wan_network: str = 'WAN-Comcast'
     verify_tls: bool = False
 
 
@@ -55,7 +55,7 @@ class PlugConfig:
 class ResetConfig:
     '''Reset sequence tuning.'''
     off_seconds: int = 15
-    mac_prefix: str = 'f2:96:1a'
+    mac_prefix: str = '02:00:00'
     mac_apply_timeout_seconds: int = 90
     recovery_timeout_seconds: int = 300
 
@@ -64,7 +64,7 @@ class ResetConfig:
 class NotifyConfig:
     '''ntfy.sh notifications; disabled when ntfy_topic is empty.'''
     ntfy_topic: str = ''
-    site: str = 'azure.unit03'
+    site: str = 'home'
 
 
 @dataclass(frozen=True)

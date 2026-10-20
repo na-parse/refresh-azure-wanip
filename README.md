@@ -1,9 +1,12 @@
 # refresh-azure-wanip
 
-Get a new public WAN IP for the Azure site on request. The service sets a new
-WAN MAC on the UniFi gateway, then power-cycles the cable modem with a Shelly
-smart plug. When the modem comes back, Comcast sees a new MAC and hands out a
-new IP.
+Get a new public WAN IP on request at a site with a UniFi gateway and a cable
+modem. The service sets a new WAN MAC on the gateway, then power-cycles the
+modem with a Shelly smart plug. When the modem comes back, the ISP sees a new
+MAC and hands out a new IP.
+
+"Azure" in the name is the author's site name; this has nothing to do with
+Microsoft Azure.
 
 It's a tiny HTTP service, meant to be called a few times a year:
 
@@ -38,8 +41,8 @@ Both print the JSON reply, including error bodies, and exit non-zero on
 If `[notify]` is set, an ntfy.sh notification goes out just before step 2
 ("WAN IP refresh started") and another when the run ends ("WAN IP refresh
 succeeded" / "FAILED"). Titles are kept short because iOS cuts them off at
-around 40 characters; the site name and details go in the message body. The final one retries for up to 2 minutes in case the
-internet isn't back yet. A failed preflight (`503`) sends nothing, since no
+around 40 characters; the site name and details go in the message body. The
+final one retries for up to 2 minutes in case the internet isn't back yet. A failed preflight (`503`) sends nothing, since no
 reset starts. Notification failures are logged and never stop a reset.
 
 If step 2 or 3 fails, the old MAC is put back. Every call goes to a LAN
@@ -64,11 +67,11 @@ Status body:
   "step": "done",
   "started": "2026-10-19T19:10:02-07:00",
   "finished": "2026-10-19T19:12:21-07:00",
-  "old_mac": "f2:96:1a:9a:4a:33",
-  "new_mac": "f2:96:1a:b7:cb:38",
+  "old_mac": "02:00:00:9a:4a:33",
+  "new_mac": "02:00:00:b7:cb:38",
   "wan_ip_changed": true,
   "error": null,
-  "events": [{"t": 0.8, "msg": "set MAC f2:96:1a:9a:4a:33 -> f2:96:1a:b7:cb:38"}],
+  "events": [{"t": 0.8, "msg": "set MAC 02:00:00:9a:4a:33 -> 02:00:00:b7:cb:38"}],
   "cooldown_remaining": 461
 }
 ```
@@ -84,15 +87,16 @@ The service looks for its config in this order: `--config PATH`, then
 | Section | Keys |
 |---|---|
 | `[server]` | `host`, `port` (8780), `token`, `cooldown_seconds` (600) |
-| `[unifi]` | `address` (gateway hostname or IP), `api_key`, `site`, `wan_network`, `verify_tls` |
+| `[unifi]` | `address` (gateway hostname or IP), `api_key`, `site` (`default`), `wan_network` (required), `verify_tls` |
 | `[modem]` | `address` (192.168.100.1), `username`, `password` |
 | `[plug]` | `address`, `password` (user is always `admin`), `switch_id` |
-| `[reset]` | `off_seconds` (15), `mac_prefix`, `mac_apply_timeout_seconds`, `recovery_timeout_seconds` |
-| `[notify]` | Optional. `ntfy_topic` (empty = off), `site` (`azure.unit03`, used in titles) |
+| `[reset]` | `off_seconds` (15), `mac_prefix` (`02:00:00`), `mac_apply_timeout_seconds`, `recovery_timeout_seconds` |
+| `[notify]` | Optional. `ntfy_topic` (empty = off), `site` (`home`, the name used in messages) |
 
 `mac_prefix` must be a locally administered unicast prefix: the first octet's
 second hex digit must be `2`, `6`, `a` or `e`. The IEEE never assigns these
-addresses to hardware, so they can't clash with a real device.
+addresses to hardware, so they can't clash with a real device. Pick your own
+prefix rather than keeping the default.
 
 For the gateway, use its hostname with `verify_tls = true` when it has a valid
 certificate (e.g. Let's Encrypt), so the API key is only sent to the real
@@ -106,6 +110,28 @@ no reset starts.
 `ntfy_topic` is a topic on the public https://ntfy.sh server. Anyone who
 knows the name can read and post to it, so treat it like a password and keep
 it out of the repo.
+
+### Finding the UniFi values
+
+All of these come from the UniFi Network web UI (written against Network 10.6
+on a UDM Pro).
+
+| Key | Where to find it |
+|---|---|
+| `address` | The host in the URL you use for the UniFi UI: `https://gw.example.com/network/default/settings/internet` → `gw.example.com` |
+| `site` | The part of that URL after `/network/`: `.../network/default/settings/...` → `default` |
+| `wan_network` | **Settings → Internet**, the **Name** column for the WAN to rotate (also the title of its settings panel when you click it). It must match exactly, including case |
+| `api_key` | **Control Plane → Integrations → Create API Key** (UniFi Network 9.0+). Create it while signed in as an admin who can change network settings |
+
+On the same **Settings → Internet** page:
+
+- **The WAN must be on `WAN1`** (the **Interface** column). The service reads
+  the gateway's WAN1 status, so a WAN on WAN2 isn't supported.
+- **MAC Address Clone** (in the WAN's panel under **Advanced → Manual**) is
+  the setting the service changes. You don't need to turn it on yourself: the
+  first reset turns it on and fills it in, and after each reset it shows the
+  new MAC. To go back to the gateway's own MAC, untick it and power-cycle the
+  modem (the public IP will change again).
 
 ## Running
 

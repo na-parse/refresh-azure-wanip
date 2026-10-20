@@ -10,10 +10,10 @@ token = "change-me"            # required in POST /reset data: token=<value>
 cooldown_seconds = 600         # minimum time between resets
 
 [unifi]
-address = "gw.azure.unit03.net" # must resolve via LAN DNS (internet drops mid-reset)
+address = "gw.example.com"     # must resolve via LAN DNS (internet drops mid-reset)
 api_key = ""                   # Network API key (X-API-KEY), needs write access
-site = "default"
-wan_network = "WAN-Comcast"    # networkconf name of the WAN to rotate
+site = "default"               # from the UI URL: /network/<site>/...
+wan_network = ""               # required: WAN Name under Settings > Internet
 verify_tls = true              # false only when address is an IP / self-signed cert
 
 [modem]
@@ -22,16 +22,16 @@ username = ""
 password = ""
 
 [plug]
-address = "172.16.254.10"      # Shelly Gen2+ plug; digest user is always "admin"
+address = "192.168.1.50"       # Shelly Gen2+ plug; digest user is always "admin"
 password = ""
 switch_id = 0
 
 [reset]
 off_seconds = 15               # modem power-off time
-mac_prefix = "f2:96:1a"        # must be locally administered unicast
+mac_prefix = "02:00:00"        # pick your own; must be locally administered unicast
 mac_apply_timeout_seconds = 90 # wait for gateway to apply the new MAC
 recovery_timeout_seconds = 300 # plug back on -> WAN has a public IP
 
 [notify]                       # optional section; omit to disable notifications
 ntfy_topic = ""                # ntfy.sh topic; anyone who knows it can read/post
-site = "azure.unit03"          # name used in notification messages
+site = "home"                  # name used in notification messages

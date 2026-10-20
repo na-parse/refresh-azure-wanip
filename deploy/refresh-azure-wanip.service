@@ -1,5 +1,5 @@
 [Unit]
-Description=Refresh Azure site WAN IP (new WAN MAC + modem power cycle)
+Description=Refresh public WAN IP (new WAN MAC + modem power cycle)
 After=network-online.target
 Wants=network-online.target
 

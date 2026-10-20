@@ -1,7 +1,7 @@
 [project]
 name = "refresh-azure-wanip"
 version = "0.1.0"
-description = "Refresh the Azure site WAN IP: new WAN MAC + modem power cycle"
+description = "Refresh the public WAN IP: new WAN MAC + modem power cycle"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = ["requests>=2.31"]
