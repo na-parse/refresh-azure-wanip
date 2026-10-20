@@ -92,9 +92,20 @@ Requires Python 3.11+ and `requests`.
 
 ```sh
 uv run refresh-azure-wanip --check          # read-only preflight, then exit
+uv run refresh-azure-wanip --reset          # run one reset here, then exit
 uv run refresh-azure-wanip                  # serve on [server] host:port
 uv run refresh-azure-wanip --config /path/to/config.toml
 ```
+
+`--reset` runs the same steps as `POST /reset` without starting the server.
+Progress is logged as it happens, the final status JSON is printed at the end,
+and the exit code is `0` on success or `1` on failure (including preflight).
+Notes:
+
+- There is no cooldown between CLI runs, and no check for a reset already
+  running in the service, so don't run both at once.
+- Don't press Ctrl-C mid-reset: the old MAC won't be restored. The plug still
+  turns back on by itself and the new MAC works, but the run isn't confirmed.
 
 ### systemd (service host)
 
