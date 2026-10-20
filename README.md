@@ -166,7 +166,7 @@ it starts at boot and restarts if it crashes. Everything lives in one folder:
 | `/opt/refresh-azure-wanip/` | The code, a git checkout |
 | `/opt/refresh-azure-wanip/.venv/` | Python environment with the service and `requests` |
 | `/opt/refresh-azure-wanip/config.toml` | Your settings and passwords. Gitignored, so `git pull` never touches it |
-| `/etc/systemd/system/refresh-azure-wanip.service` | Tells systemd how to run it |
+| `/etc/systemd/system/refresh-azure-wanip.service` | Tells systemd how to run it. A link to `deploy/refresh-azure-wanip.service` in the repo |
 
 The service runs as its own user, `refresh-wanip`, which can read the code and
 config but can't change anything.
@@ -233,13 +233,16 @@ plug. Fix anything it reports before going on.
 ### 5. Install and start the service
 
 ```sh
-cp deploy/refresh-azure-wanip.service /etc/systemd/system/
+ln -s /opt/refresh-azure-wanip/deploy/refresh-azure-wanip.service \
+    /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable --now refresh-azure-wanip
 ```
 
-`daemon-reload` makes systemd read the new unit file. `enable --now` starts
-the service and sets it to start at boot.
+The unit file is linked rather than copied, so systemd always uses the copy
+in the repo and updates to it arrive with `git pull`. `daemon-reload` makes
+systemd read the unit file. `enable --now` starts the service and sets it to
+start at boot.
 
 ### 6. Check it's running
 
@@ -259,21 +262,34 @@ JSON with `"state": "idle"`.
 | Restart after editing `config.toml` | `systemctl restart refresh-azure-wanip` |
 | Stop / start | `systemctl stop refresh-azure-wanip` / `systemctl start refresh-azure-wanip` |
 
-To update to the latest code:
+### Updating
 
 ```sh
-cd /opt/refresh-azure-wanip
-git pull
-uv pip install --reinstall-package refresh-azure-wanip .
-systemctl restart refresh-azure-wanip
+/opt/refresh-azure-wanip/deploy/update.sh
 ```
 
-`--reinstall-package` is needed because the version number usually doesn't
-change between commits, and uv would otherwise treat the old copy as
-current. If `git pull` changed `deploy/refresh-azure-wanip.service`, copy it
-again and run `systemctl daemon-reload` before restarting.
+The script checks GitHub for new commits on `main` and exits with
+`No updates` if there aren't any, so it's safe to run any time. When there
+are, it:
 
-To remove it completely:
+1. Refuses to continue if a reset is running. Restarting mid-reset would
+   stop it partway, without putting the old MAC back.
+2. Pulls the new commits and prints them.
+3. Reinstalls the package into `.venv`.
+4. Makes sure the unit file is linked from the repo (and fixes it if it was
+   copied), then runs `systemctl daemon-reload` so unit changes take effect.
+5. Restarts the service and checks that it's running and `/status` answers.
+
+It exits non-zero if anything fails. Add `--force` to reinstall and restart
+even when there are no new commits, e.g. after fixing something by hand.
+
+To do the same by hand: `git pull`, then
+`uv pip install --reinstall-package refresh-azure-wanip .` (without
+`--reinstall-package`, uv keeps the old copy because the version number
+usually doesn't change), `systemctl daemon-reload` and
+`systemctl restart refresh-azure-wanip`.
+
+### Uninstalling
 
 ```sh
 systemctl disable --now refresh-azure-wanip
