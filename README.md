@@ -8,13 +8,22 @@ new IP.
 It's a tiny HTTP service, meant to be called a few times a year:
 
 ```sh
+# curl (preferred, and the one to use in scripts)
 curl -sS --fail-with-body --data 'token=XXXX' http://<host>:8780/reset
 curl -sS http://<host>:8780/status
+
+# wget (shorter to type by hand)
+wget -qO- --content-on-error --post-data='token=XXXX' http://<host>:8780/reset
+wget -qO- http://<host>:8780/status
 ```
 
-`--data` sends a form-encoded POST. `--fail-with-body` (curl 7.76+) prints the
-JSON error body and exits non-zero (22) on `4xx` / `5xx`, so scripts can check
-the exit code. Add `-w ' [%{http_code}]\n'` to also print the status code.
+Both print the JSON reply, including error bodies, and exit non-zero on
+`4xx` / `5xx` (curl 22, wget 8):
+
+- **curl:** `--data` sends a form POST. `--fail-with-body` needs curl 7.76+.
+  Add `-w ' [%{http_code}]\n'` to also print the status code.
+- **wget:** without `--content-on-error`, wget prints nothing on errors. That
+  flag needs GNU wget 1.14+ (BusyBox wget doesn't have it).
 
 ## How a reset works
 
