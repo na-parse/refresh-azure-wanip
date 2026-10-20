@@ -1,0 +1,33 @@
+# refresh-azure-wanip configuration
+#
+# Copy to config.toml (or /etc/refresh-azure-wanip/config.toml) and chmod 600.
+# Lookup order: --config PATH, ./config.toml, /etc/refresh-azure-wanip/config.toml
+
+[server]
+host = "0.0.0.0"
+port = 8780
+token = "change-me"            # required in POST /reset data: token=<value>
+cooldown_seconds = 600         # minimum time between resets
+
+[unifi]
+address = "172.16.1.1"         # gateway IP (avoid DNS)
+api_key = ""                   # Network API key (X-API-KEY), needs write access
+site = "default"
+wan_network = "WAN-Comcast"    # networkconf name of the WAN to rotate
+verify_tls = false
+
+[modem]
+address = "192.168.100.1"
+username = ""
+password = ""
+
+[plug]
+address = "172.16.254.10"      # Shelly Gen2+ plug; digest user is always "admin"
+password = ""
+switch_id = 0
+
+[reset]
+off_seconds = 15               # modem power-off time
+mac_prefix = "f2:96:1a"        # must be locally administered unicast
+mac_apply_timeout_seconds = 90 # wait for gateway to apply the new MAC
+recovery_timeout_seconds = 300 # plug back on -> WAN has a public IP

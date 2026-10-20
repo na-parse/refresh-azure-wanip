@@ -1,0 +1,19 @@
+[Unit]
+Description=Refresh Azure site WAN IP (new WAN MAC + modem power cycle)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=refresh-wanip
+Group=refresh-wanip
+ExecStart=/opt/refresh-azure-wanip/.venv/bin/refresh-azure-wanip --config /etc/refresh-azure-wanip/config.toml
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

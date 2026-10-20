@@ -1,0 +1,12 @@
+# Local config holds credentials - never commit
+config.toml
+
+# Assistant memory
+.claude/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+uv.lock
